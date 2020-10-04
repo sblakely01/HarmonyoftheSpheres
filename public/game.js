@@ -2,19 +2,31 @@ let maxTime = 120;
 let musicLoop = [['F', 0], ['D', 50], ['F', 100], ['A', 120]];
 let fixed = [];
 let rand = [];
-let index = 0;
 let particlesPool = [];
+let index = 0;
+let badNotes = 0;
+capturedScore = 0;
 let startButton = document.getElementById( 'startButton' );
+let restartButton = document.getElementById( 'restartButton' );
 startButton.addEventListener( 'click', init );
+restartButton.addEventListener( 'click', restart );
 var clock;
+var info = document.getElementById( 'info' );
 var Colors = {
-
+  black: 0x000000,
+  dkpurple: 0x250e56,
+  mpurple: 0x653a89,
+  ltpurple: 0xb6aff5,
+  bright: 0x52b7ff,
+  blue: 0x013ba9,
+  tan: 0xc7c5b3,
+  wrong: 0x92627a,
 };
 var mousePos = { x: 0, y: 0};
 class Game {
   constructor() {
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0xf7d9aa, 100, 950);
+    this.scene.fog = new THREE.Fog(Colors.ltpurple, 100, 950);
     this.camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000);
     this.audioLoader = new THREE.AudioLoader();
     let listener = new THREE.AudioListener();
@@ -32,7 +44,7 @@ class Game {
     const light = new THREE.DirectionalLight( 0xffffff);
     light.position.set(0, 20, 10);
     const ambient = new THREE.AmbientLight( 0x707070);
-    const material = new THREE.MeshPhongMaterial( {color: 0x00aaff});
+    const material = new THREE.MeshPhongMaterial( {color: Colors.dkpurple});
     this.cube = new THREE.Mesh( geometry, material);
     this.cube.name = "Cube";
     this.scene.add(this.cube);
@@ -124,10 +136,10 @@ createBar = function() {
   return bars.mesh;
 }
 Sea = function() {
-  let geom = new THREE.CylinderGeometry(800, 800, 800, 40, 10);
+  let geom = new THREE.SphereBufferGeometry(800, 20, 20);
   geom.applyMatrix(new THREE.Matrix4().makeRotationX(-Math.PI/2));
   let mat = new THREE.MeshPhongMaterial({
-    color: 0x00aaff ,
+    color: 0x01a9a1 ,
     transparent: true,
     opacity: .6,
     shading: THREE.FlatShading,
@@ -153,7 +165,7 @@ Bars = function() {
 Bar = function() {
   let geom = new THREE.CylinderGeometry(300, 300, 2, 40, 10, true);
   let mat = new THREE.MeshPhongMaterial({
-    color: 0xffffff ,
+    color: Colors.black ,
     transparent: true,
     opacity: .8,
     shading: THREE.FlatShading,
@@ -186,7 +198,7 @@ Cloud = function() {
   this.mesh = new THREE.Object3D();
   let geom = new THREE.BoxGeometry(20,20,20);
   let mat = new THREE.MeshPhongMaterial({
-    color: 0xffffff,
+    color: Colors.tan,
   });
   let nBlocs = 3 + Math.floor(Math.random() * 3);
   for (let i = 0; i < nBlocs; i++) {
@@ -213,10 +225,10 @@ createFixedNotes = function() {
     for (let i = 0; i < this.nNotes; i++) {
       if (i === 2) {
         game.audioLoader.load( 'Piano17.ogg', function(buffer) {
-          let ballGeom = new THREE.SphereBufferGeometry(2, 32, 16);
+          let ballGeom = new THREE.SphereBufferGeometry(1.5, 32, 16);
 
           let mat = new THREE.MeshPhongMaterial({
-            color: 0x070707 ,
+            color: Colors.tan ,
             transparent: true,
             opacity: .8,
             shading: THREE.FlatShading,
@@ -241,10 +253,10 @@ createFixedNotes = function() {
       })
       } else if (i === 3) {
         game.audioLoader.load( 'Piano114.ogg', function(buffer) {
-          let ballGeom = new THREE.SphereBufferGeometry(2, 32, 16);
+          let ballGeom = new THREE.SphereBufferGeometry(1.5, 32, 16);
 
           let mat = new THREE.MeshPhongMaterial({
-            color: 0x020202 ,
+            color: Colors.tan ,
             transparent: true,
             opacity: .8,
             shading: THREE.FlatShading,
@@ -269,10 +281,10 @@ createFixedNotes = function() {
       })
       } else {
         game.audioLoader.load( 'Piano14.ogg', function(buffer) {
-          let ballGeom = new THREE.SphereBufferGeometry(2, 32, 16);
+          let ballGeom = new THREE.SphereBufferGeometry(1.5, 32, 16);
 
           let mat = new THREE.MeshPhongMaterial({
-            color: 0x020202 ,
+            color: Colors.tan ,
             transparent: true,
             opacity: .8,
             shading: THREE.FlatShading,
@@ -298,15 +310,34 @@ createFixedNotes = function() {
     };
   }
 }
+createNoteErase = function() {
+  let randomY = Math.random * (106 - 96) + 96;
+
+  let geom = new THREE.OctahedronBufferGeometry();
+  let mat = new THREE.MeshPhongMaterial({
+    color: Colors.bright,
+    transparent: true,
+    opacity: .7,
+        specular:0xffffff,
+    shading: THREE.FlatShading,
+  })
+  var star = new THREE.Mesh(geom, mat);
+  star.position.x = 50;
+  star.position.y = 100;
+  star.position.z = 175;
+  star.name = "star";
+  console.log('note erase: ' + star.position.x + ' ' + star.position.y + ' ' + star.position.z);
+  game.scene.add(star);
+}
 createRandNote = function() {
   let spacing = Math.random() * 30;
-  let randomNote = Math.floor(Math.random() * 2);
+  let randomNote = Math.floor(Math.random() * 4);
   if (randomNote === 1) {
         game.audioLoader.load( 'Piano110.ogg', function(buffer) {
-          let ballGeom = new THREE.SphereBufferGeometry(2, 32, 16);
+          let ballGeom = new THREE.DodecahedronBufferGeometry(1.5);
 
           let mat = new THREE.MeshPhongMaterial({
-            color: 0xff0202 ,
+            color: Colors.wrong ,
             transparent: true,
             opacity: .8,
             shading: THREE.FlatShading,
@@ -318,11 +349,7 @@ createRandNote = function() {
           ball.userData.playing = false;
           ball.userData.permanent = false;
           ball.add(audio);
-          rand.push( ball);
-
-          // let n = new FixedNote();
-          // let w = noteSpace * i;
-          // this.mesh.position.y = 100;
+          // rand.push( ball);
           ball.position.x = 50;
           ball.position.y = 102;
           ball.position.z = 175;
@@ -332,10 +359,10 @@ createRandNote = function() {
       })
       } else if (randomNote === 0) {
         game.audioLoader.load( 'Piano125.ogg', function(buffer) {
-          let ballGeom = new THREE.SphereBufferGeometry(2, 32, 16);
+          let ballGeom = new THREE.DodecahedronBufferGeometry(1.5);
 
           let mat = new THREE.MeshPhongMaterial({
-            color: 0x02ff02 ,
+            color: Colors.wrong ,
             transparent: true,
             opacity: .8,
             shading: THREE.FlatShading,
@@ -347,7 +374,7 @@ createRandNote = function() {
           ball.userData.playing = false;
           ball.userData.permanent = false;
           ball.add(audio);
-          rand.push( ball);
+          // rand.push( ball);
 
           // let n = new FixedNote();
           // let w = noteSpace * i;
@@ -359,12 +386,12 @@ createRandNote = function() {
           ball.name = "wrongNote";
           game.scene.add(ball);
       })
-      } else {
-        game.audioLoader.load( 'Piano118.ogg', function(buffer) {
-          let ballGeom = new THREE.SphereBufferGeometry(2, 32, 16);
+      } else if (randomNote === 2) {
+        game.audioLoader.load( 'Piano12.ogg', function(buffer) {
+          let ballGeom = new THREE.DodecahedronBufferGeometry(1.5);
 
           let mat = new THREE.MeshPhongMaterial({
-            color: 0x0202ff ,
+            color: Colors.wrong ,
             transparent: true,
             opacity: .8,
             shading: THREE.FlatShading,
@@ -376,13 +403,71 @@ createRandNote = function() {
           ball.userData.playing = false;
           ball.userData.permanent = false;
           ball.add(audio);
-          rand.push( ball);
+          // rand.push( ball);
 
           // let n = new FixedNote();
           // let w = noteSpace * i;
           // this.mesh.position.y = 100;
           ball.position.x = 50;
-          ball.position.y = 100;
+          ball.position.y = 95;
+          ball.position.z = 175;
+          // n.mesh.position.z = -50;
+          ball.name = "wrongNote";
+          game.scene.add(ball);
+      })
+      } else if (randomNote === 3) {
+        game.audioLoader.load( 'Piano123.ogg', function(buffer) {
+          let ballGeom = new THREE.DodecahedronBufferGeometry(1.5);
+
+          let mat = new THREE.MeshPhongMaterial({
+            color: Colors.wrong ,
+            transparent: true,
+            opacity: .8,
+            shading: THREE.FlatShading,
+          });
+          var audio = new THREE.PositionalAudio( game.camera.children[0] ); // should work but doesnt?
+          audio.setBuffer( buffer);
+          var ball = new THREE.Mesh(ballGeom, mat);
+          ball.castShadow = true;
+          ball.userData.playing = false;
+          ball.userData.permanent = false;
+          ball.add(audio);
+          // rand.push( ball);
+
+          // let n = new FixedNote();
+          // let w = noteSpace * i;
+          // this.mesh.position.y = 100;
+          ball.position.x = 50;
+          ball.position.y = 102;
+          ball.position.z = 175;
+          // n.mesh.position.z = -50;
+          ball.name = "wrongNote";
+          game.scene.add(ball);
+      })
+      } else {
+        game.audioLoader.load( 'Piano18.ogg', function(buffer) {
+          let ballGeom = new THREE.DodecahedronBufferGeometry(1.5);
+
+          let mat = new THREE.MeshPhongMaterial({
+            color: Colors.wrong ,
+            transparent: true,
+            opacity: .8,
+            shading: THREE.FlatShading,
+          });
+          var audio = new THREE.PositionalAudio( game.camera.children[0] ); // should work but doesnt?
+          audio.setBuffer( buffer);
+          var ball = new THREE.Mesh(ballGeom, mat);
+          ball.castShadow = true;
+          ball.userData.playing = false;
+          ball.userData.permanent = false;
+          ball.add(audio);
+          // rand.push( ball);
+
+          // let n = new FixedNote();
+          // let w = noteSpace * i;
+          // this.mesh.position.y = 100;
+          ball.position.x = 50;
+          ball.position.y = 98;
           ball.position.z = 175;
           // n.mesh.position.z = -50;
           ball.name = "wrongNote";
@@ -392,15 +477,25 @@ createRandNote = function() {
 
 }
 
-detectCollision = function(enemy) {
+detectCollision = function(target) {
   // console.log(game.scene.children[0]);
-  let diffPosX = game.scene.children[0].position.x - enemy.position.x;
-  let diffPosY = game.scene.children[0].position.y - enemy.position.y;
-  console.log(diffPosX, diffPosY);
-  if (Math.abs(diffPosX) < 1 && Math.abs(diffPosY) < 1) {
+  let diffPosX = game.scene.children[0].position.x - target.position.x;
+  let diffPosY = game.scene.children[0].position.y - target.position.y;
+  // console.log(diffPosX, diffPosY);
+  if (Math.abs(diffPosX) < 2 && Math.abs(diffPosY) < 2) {
+    if (target.name === "star") {
+      console.log('Power Up!');
+      for (let i = 0; i < game.scene.children.length; i++) {
+        if (game.scene.children[i].name === "wrongNote" && game.scene.children[i].userData.permanent) {
+          game.scene.remove(game.scene.children[i]);
+        }
+      }
+      particlesHolder.spawnParticles(target.position, 7, Colors.bright, 4);
+      game.scene.remove(target);
+    }
     console.log('Enemy destroyed!');
-    game.scene.remove(enemy);
-    particlesHolder.spawnParticles(enemy.position, 15, 0xff2020);
+    particlesHolder.spawnParticles(target.position, 7, Colors.wrong, 4);
+    game.scene.remove(target);
   }
 }
 
@@ -459,89 +554,164 @@ ParticlesHolder.prototype.spawnParticles = function(pos, density, color, scale){
 
 randNote = function() {
   var time = clock.getElapsedTime();
-  let chance = Math.random() * 800;
-  let poss = 3 * (time / 60) + 1;
-  if (chance < poss) {
+  let chance = Math.random();
+
+  if (chance > (0.999 - (.001 * time))) {
     createRandNote();
   }
 }
 
-function loop(index, totalNotes) {
+noteErase = function() {
+
+  var time = clock.getElapsedTime();
+  let chance = Math.random() * (clock.time - time);
+  if (chance > (0.999 - (.0001 * time)) ) {
+    createNoteErase();
+  }
+}
+
+disposeScene = function(parentObject) {
+  parentObject.traverse(function (node) {
+    if (node instanceof THREE.Mesh) {
+        if (node.geometry) {
+            node.geometry.dispose();
+        }
+        if (node.material) {
+
+            if (node.material instanceof THREE.MeshFaceMaterial || node.material instanceof THREE.MultiMaterial) {
+                node.material.materials.forEach(function (mtrl, idx) {
+                    if (mtrl.map) mtrl.map.dispose();
+                    if (mtrl.lightMap) mtrl.lightMap.dispose();
+                    if (mtrl.bumpMap) mtrl.bumpMap.dispose();
+                    if (mtrl.normalMap) mtrl.normalMap.dispose();
+                    if (mtrl.specularMap) mtrl.specularMap.dispose();
+                    if (mtrl.envMap) mtrl.envMap.dispose();
+
+                    mtrl.dispose();    // disposes any programs associated with the material
+                });
+            }
+            else {
+                if (node.material.map) node.material.map.dispose();
+                if (node.material.lightMap) node.material.lightMap.dispose();
+                if (node.material.bumpMap) node.material.bumpMap.dispose();
+                if (node.material.normalMap) node.material.normalMap.dispose();
+                if (node.material.specularMap) node.material.specularMap.dispose();
+                if (node.material.envMap) node.material.envMap.dispose();
+
+                node.material.dispose();   // disposes any programs associated with the material
+            }
+        }
+    }
+});
+}
+
+function loop() {
   var time = clock.getElapsedTime();
 
-  index = (index) ? index : 0;
-  // console.log(totalNotes);
-  // console.log(index);
+  if (badNotes >= 25) {
+    if (capturedScore === 0) {
+      capturedScore = Math.floor(time/10);
+    }
+    for (let i = 0; i < game.scene.children.length; i++) {
+      if (game.scene.children[i].name === "wrongNote" && game.scene.children[i].userData.permanent === false) {
+        game.scene.remove(game.scene.children[i]);
+      }
+    }
+      // disposeScene(game.scene);
+      var text = document.getElementById('gamescore');
+      text.value = capturedScore;
+      // console.log(text.value);
+      var gameover = document.getElementById( 'gameover' );
+      gameover.style.display = "block";
+
+  }
+  if (badNotes < 25) {
+    info.innerHTML = '<h1>Score: ' + Math.floor(time/10) + '  ' + 'Bad Notes: ' + badNotes + ' / 25' + '</h1>';
+  }
+
+  console.log(badNotes);
   if (index >= 4) {
     index = 0;
   }
-  // if (totalNotes > 12) {
-  //   console.log('More than 12');
-  // console.log(time);
-  if (time > 20) {
+  if (time > 20 && badNotes < 25) {
+    noteErase();
     randNote();
   }
-
   for (let i = 0; i < game.scene.children.length; i++){
     //  console.log(game.scene.children[i]);
-    if (game.scene.children[i].name === "sea") {
-      game.scene.children[i].rotation.z += .005;
-    }
-    if (game.scene.children[i].name === "sky") {
-      game.scene.children[i].rotation.z += .001;
-    }
-    if (game.scene.children[i].name === "fixedNotes") {
 
-      // console.log('Note: ' + i + ' ' + game.scene.children[i].position.x );
-      game.scene.children[i].position.x -= .2;
-      if (game.scene.children[i].position.x <= -20 && !game.scene.children[i].userData.playing) {
+      if (game.scene.children[i].name === "sea" && badNotes < 25) {
+        game.scene.children[i].rotation.z += .005;
+      } else if (game.scene.children[i].name === "star" && badNotes < 25) {
+        if (game.scene.children[i]) {
+          game.scene.children[i].rotation.z += .005;
+          game.scene.children[i].position.x -= .3;
+          if (game.scene.children[i].position.x < -20) {
+            game.scene.remove(game.scene.children[i]);
+          }
+          detectCollision(game.scene.children[i]);
+        }
+      } else if (game.scene.children[i].name === "sky" && badNotes < 25) {
+        game.scene.children[i].rotation.z += .001;
+      } else if (game.scene.children[i].name === "fixedNotes") {
 
-        game.scene.children[i].userData.playing = true;
-        var audio = game.scene.children[i].children[0];
-        totalNotes++;
-        audio.setLoop(false);
-        audio.setVolume( 5);
-        audio.play();
-        game.scene.children[i].position.x = 50 + (30 * index);
-        game.scene.children[i].userData.playing = false;
-        index++;
-
-
-      }
-    }
-    if (game.scene.children[i].name === "wrongNote") {
-      // console.log('Note: ' + i + ' ' + game.scene.children[i].position.x );
-      game.scene.children[i].position.x -= .2;
-      if ( !game.scene.children[i].userData.permanent ) {
-        detectCollision(game.scene.children[i]);
-      }
-
-      if (game.scene.children[i]) {
+        // console.log('Note: ' + i + ' ' + game.scene.children[i].position.x );
+        game.scene.children[i].position.x -= .2;
         if (game.scene.children[i].position.x <= -20 && !game.scene.children[i].userData.playing) {
 
           game.scene.children[i].userData.playing = true;
           var audio = game.scene.children[i].children[0];
-          totalNotes++;
           audio.setLoop(false);
           audio.setVolume( 5);
           audio.play();
-          game.scene.children[i].material.color.setHex(0xffff00);
-          game.scene.children[i].position.x = 50 + (30 * (index));
+          game.scene.children[i].position.x = 30 + (25 * index);
           game.scene.children[i].userData.playing = false;
-          game.scene.children[i].userData.permanent = true;
+          index++;
+
         }
-      }
+      } else if (game.scene.children[i].name === "wrongNote") {
+        // console.log('Note: ' + i + ' ' + game.scene.children[i].position.x );
+        game.scene.children[i].position.x -= .2;
+        if ( game.scene.children[i] && !game.scene.children[i].userData.permanent ) {
+          detectCollision(game.scene.children[i]);
+        }
+
+        if (game.scene.children[i]) {
+          if (game.scene.children[i].position.x <= -20 && !game.scene.children[i].userData.playing ) {
+
+            game.scene.children[i].userData.playing = true;
+            var audio = game.scene.children[i].children[0];
+            if (!game.scene.children[i].userData.permanent) {
+              badNotes++;
+            }
+
+            audio.setLoop(false);
+            audio.setVolume( 5);
+            audio.play();
+            game.scene.children[i].material.color.setHex(0xffff00);
+            game.scene.children[i].position.x = 30 + (25 * (index));
+            game.scene.children[i].userData.playing = false;
+            game.scene.children[i].userData.permanent = true;
+
+          }
+        }
+
 
     }
-  }
-  game.renderer.render(game.scene, game.camera);
-  requestAnimationFrame(loop);
+
+    }
+  // setTimeout( function() {
+    requestAnimationFrame(loop);
+    // }, 1000 / 30 );
+        game.renderer.render(game.scene, game.camera);
 }
 
 function init(event){
   document.addEventListener('mousemove', handleMouseMove, false);
   var overlay = document.getElementById( 'overlay' );
   overlay.remove();
+
+  info.innerHTML = '<h1>Score: </h1>';
   const game = new Game();
   window.game = game;
   let sea = createSea();
@@ -551,8 +721,13 @@ function init(event){
   let particles = createParticles();
   // musicTimer = 0;
 
-  loop(0, 0);
+  loop();
 }
+
+function restart(event) {
+  location.reload();
+}
+
 var mousePos={x:0, y:0};
 handleMouseMove = function(event) {
   var tx = -1 + (event.clientX / innerWidth) * 2;

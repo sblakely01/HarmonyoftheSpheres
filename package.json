@@ -19,6 +19,13 @@
   "homepage": "https://github.com/sblakely01/threejs#readme",
   "dependencies": {
     "express": "^4.17.1",
-    "jquery": "^3.5.1"
+    "jquery": "^3.5.1",
+    "mysql": "^2.18.1"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.11.6",
+    "@babel/core": "^7.11.6",
+    "@babel/node": "^7.10.5",
+    "@babel/preset-env": "^7.11.5"
   }
 }
